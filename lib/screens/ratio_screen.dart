@@ -69,6 +69,8 @@ class _RatioScreenState extends State<RatioScreen> {
       selectedDish = name;
       ingredients = List<String>.from(dish["ingredients"]);
       base = List<double>.from(dish["base"]);
+      baseOutput = (dish["baseOutput"] ?? 1).toDouble();
+      targetOutput = baseOutput;
       result = List.from(base);
 
       baseOutput = (dish["baseOutput"] ?? 1).toDouble();
@@ -156,9 +158,7 @@ class _RatioScreenState extends State<RatioScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              setState(() {
-                ingredients[index] = controller.text;
-              });
+              setState(() => ingredients[index] = controller.text);
               saveCurrentDish();
               Navigator.pop(context);
             },
@@ -199,7 +199,6 @@ class _RatioScreenState extends State<RatioScreen> {
 
   void updateValue(int index, String val) {
     if (val.isEmpty) return;
-
     double newVal = double.tryParse(val) ?? 0;
     double factor = newVal / base[index];
 
@@ -224,9 +223,29 @@ class _RatioScreenState extends State<RatioScreen> {
       c.clear();
     }
 
+    // ⭐ CLEAR OTHER ENTER FIELDS
+    for (int i = 0; i < enterControllers.length; i++) {
+      if (i != index) {
+        enterControllers[i].clear();
+      }
+    }
+
     setState(() {
       result = base.map((e) => e * factor).toList();
       targetOutput = newOutput;
+    });
+  }
+
+  // ⭐ SCALE BY OUTPUT
+  void updateOutput(String val) {
+    if (val.isEmpty) return;
+
+    targetOutput = double.tryParse(val) ?? baseOutput;
+
+    double factor = targetOutput / baseOutput;
+
+    setState(() {
+      result = base.map((e) => e * factor).toList();
     });
   }
 
@@ -294,7 +313,6 @@ class _RatioScreenState extends State<RatioScreen> {
                       padding: const EdgeInsets.all(6),
                       child: Column(
                         children: [
-
                           GestureDetector(
                             onTap: () => editIngredient(i),
                             child: Container(
@@ -307,29 +325,22 @@ class _RatioScreenState extends State<RatioScreen> {
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 4),
-
                           Expanded(
                             child: SingleChildScrollView(
                               child: Column(
                                 children: [
-
                                   TextField(
-                                    controller: TextEditingController(
-                                        text: base[i].toString()),
-                                    decoration: const InputDecoration(
-                                      labelText: "Base",
-                                      isDense: true,
-                                    ),
+                                    controller: TextEditingController(text: base[i].toString()),
+                                    decoration: const InputDecoration(labelText: "Base", isDense: true),
                                     onChanged: (v) {
                                       base[i] = double.tryParse(v) ?? 1;
                                       saveCurrentDish();
                                     },
                                   ),
-
                                   const SizedBox(height: 4),
 
+                                  // ⭐ ENTER FIELD WITH CONTROLLER
                                   TextField(
                                     controller: enterControllers[i],
                                     decoration: const InputDecoration(
@@ -338,19 +349,10 @@ class _RatioScreenState extends State<RatioScreen> {
                                     ),
                                     onChanged: (v) => updateValue(i, v),
                                   ),
-
                                   const SizedBox(height: 6),
-
-                                  Text(
-                                    result[i].toStringAsFixed(2),
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                  ),
-
-                                  IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    onPressed: () => removeVariable(i),
-                                  ),
+                                  Text(result[i].toStringAsFixed(2),
+                                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  IconButton(icon: const Icon(Icons.delete), onPressed: () => removeVariable(i)),
                                 ],
                               ),
                             ),
