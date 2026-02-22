@@ -18,8 +18,13 @@ class _RatioScreenState extends State<RatioScreen> {
   List<double> base = [];
   List<double> result = [];
 
-  // ⭐ NEW: controllers for Enter fields
   List<TextEditingController> enterControllers = [];
+
+  // ⭐ OUTPUT FEATURE
+  double baseOutput = 1;
+  double targetOutput = 1;
+  TextEditingController baseOutputController = TextEditingController(text: "1");
+  TextEditingController targetOutputController = TextEditingController();
 
   @override
   void initState() {
@@ -49,6 +54,7 @@ class _RatioScreenState extends State<RatioScreen> {
     dishes[selectedDish!] = {
       "ingredients": ingredients,
       "base": base,
+      "baseOutput": baseOutput,
     };
 
     saveData();
@@ -65,7 +71,12 @@ class _RatioScreenState extends State<RatioScreen> {
       base = List<double>.from(dish["base"]);
       result = List.from(base);
 
-      // ⭐ CREATE ENTER CONTROLLERS
+      baseOutput = (dish["baseOutput"] ?? 1).toDouble();
+      targetOutput = baseOutput;
+
+      baseOutputController.text = baseOutput.toString();
+      targetOutputController.text = baseOutput.toString();
+
       enterControllers =
           List.generate(base.length, (_) => TextEditingController());
     });
@@ -88,6 +99,7 @@ class _RatioScreenState extends State<RatioScreen> {
               dishes[name] = {
                 "ingredients": ["Ingredient 1", "Ingredient 2", "Ingredient 3"],
                 "base": [1.0, 2.0, 3.0],
+                "baseOutput": 1.0,
               };
 
               saveData();
@@ -101,7 +113,6 @@ class _RatioScreenState extends State<RatioScreen> {
     );
   }
 
-  // ⭐ DELETE DISH
   void deleteDish() {
     if (selectedDish == null) return;
 
@@ -111,20 +122,15 @@ class _RatioScreenState extends State<RatioScreen> {
         title: const Text("Delete Item"),
         content: Text("Delete '$selectedDish'?"),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           TextButton(
             onPressed: () {
               dishes.remove(selectedDish);
-
               selectedDish = null;
               ingredients.clear();
               base.clear();
               result.clear();
               enterControllers.clear();
-
               saveData();
               Navigator.pop(context);
               setState(() {});
@@ -163,7 +169,6 @@ class _RatioScreenState extends State<RatioScreen> {
     );
   }
 
-  // ⭐ DELETE INGREDIENT
   void removeVariable(int i) {
     showDialog(
       context: context,
@@ -171,19 +176,15 @@ class _RatioScreenState extends State<RatioScreen> {
         title: const Text("Delete Ingredient"),
         content: Text("Delete '${ingredients[i]}'?"),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           TextButton(
             onPressed: () {
               setState(() {
                 base.removeAt(i);
                 result.removeAt(i);
                 ingredients.removeAt(i);
-                enterControllers.removeAt(i); // ⭐ remove controller
+                enterControllers.removeAt(i);
               });
-
               saveCurrentDish();
               Navigator.pop(context);
             },
@@ -194,27 +195,38 @@ class _RatioScreenState extends State<RatioScreen> {
     );
   }
 
-  // ================= RATIO =================
-
-  List<double> scaleRatio(List<double> base, int index, double newValue) {
-    double factor = newValue / base[index];
-    return base.map((e) => e * factor).toList();
-  }
+  // ================= SCALE =================
 
   void updateValue(int index, String val) {
     if (val.isEmpty) return;
 
     double newVal = double.tryParse(val) ?? 0;
+    double factor = newVal / base[index];
 
-    // ⭐ CLEAR OTHER ENTER FIELDS
     for (int i = 0; i < enterControllers.length; i++) {
-      if (i != index) {
-        enterControllers[i].clear();
-      }
+      if (i != index) enterControllers[i].clear();
     }
 
     setState(() {
-      result = scaleRatio(base, index, newVal);
+      result = base.map((e) => e * factor).toList();
+      targetOutput = baseOutput * factor;
+      targetOutputController.text = targetOutput.toStringAsFixed(2);
+    });
+  }
+
+  void updateOutput(String val) {
+    if (val.isEmpty) return;
+
+    double newOutput = double.tryParse(val) ?? 0;
+    double factor = newOutput / baseOutput;
+
+    for (var c in enterControllers) {
+      c.clear();
+    }
+
+    setState(() {
+      result = base.map((e) => e * factor).toList();
+      targetOutput = newOutput;
     });
   }
 
@@ -227,7 +239,7 @@ class _RatioScreenState extends State<RatioScreen> {
       base.add(1);
       result.add(1);
       ingredients.add("Ingredient ${ingredients.length + 1}");
-      enterControllers.add(TextEditingController()); // ⭐ add controller
+      enterControllers.add(TextEditingController());
     });
 
     saveCurrentDish();
@@ -240,7 +252,6 @@ class _RatioScreenState extends State<RatioScreen> {
 
     return Padding(
       padding: const EdgeInsets.all(12),
-
       child: Column(
         children: [
 
@@ -252,10 +263,7 @@ class _RatioScreenState extends State<RatioScreen> {
                   hint: const Text("Select Item"),
                   isExpanded: true,
                   items: dishes.keys.map((name) {
-                    return DropdownMenuItem(
-                      value: name,
-                      child: Text(name),
-                    );
+                    return DropdownMenuItem(value: name, child: Text(name));
                   }).toList(),
                   onChanged: (v) => loadDish(v!),
                 ),
@@ -273,8 +281,7 @@ class _RatioScreenState extends State<RatioScreen> {
             Expanded(
               child: GridView.builder(
                 itemCount: base.length,
-                gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
@@ -323,7 +330,6 @@ class _RatioScreenState extends State<RatioScreen> {
 
                                   const SizedBox(height: 4),
 
-                                  // ⭐ ENTER FIELD WITH CONTROLLER
                                   TextField(
                                     controller: enterControllers[i],
                                     decoration: const InputDecoration(
@@ -357,14 +363,38 @@ class _RatioScreenState extends State<RatioScreen> {
               ),
             ),
 
+          // ⭐ OUTPUT SECTION (ONLY ADDITION)
           if (selectedDish != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: ElevatedButton.icon(
-                onPressed: addVariable,
-                icon: const Icon(Icons.add),
-                label: const Text("Add Ingredient"),
-              ),
+            Column(
+              children: [
+
+                TextField(
+                  controller: baseOutputController,
+                  decoration: const InputDecoration(
+                      labelText: "Base Output (items produced)"),
+                  onChanged: (v) {
+                    baseOutput = double.tryParse(v) ?? 1;
+                    saveCurrentDish();
+                  },
+                ),
+
+                const SizedBox(height: 6),
+
+                TextField(
+                  controller: targetOutputController,
+                  decoration: const InputDecoration(
+                      labelText: "Target Output (items needed)"),
+                  onChanged: updateOutput,
+                ),
+
+                const SizedBox(height: 10),
+
+                ElevatedButton.icon(
+                  onPressed: addVariable,
+                  icon: const Icon(Icons.add),
+                  label: const Text("Add Ingredient"),
+                ),
+              ],
             ),
         ],
       ),
