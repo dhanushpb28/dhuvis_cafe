@@ -18,19 +18,14 @@ class _RatioScreenState extends State<RatioScreen> {
   List<double> base = [];
   List<double> result = [];
 
-  // ⭐ NEW — PRODUCTION OUTPUT
-  double baseOutput = 1;     // how many items base recipe makes
-  double targetOutput = 1;   // how many items we want
-
-  // ================= INIT =================
+  // ⭐ NEW: controllers for Enter fields
+  List<TextEditingController> enterControllers = [];
 
   @override
   void initState() {
     super.initState();
     loadData();
   }
-
-  // ================= STORAGE =================
 
   Future loadData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -72,6 +67,10 @@ class _RatioScreenState extends State<RatioScreen> {
       baseOutput = (dish["baseOutput"] ?? 1).toDouble();
       targetOutput = baseOutput;
       result = List.from(base);
+
+      // ⭐ CREATE ENTER CONTROLLERS
+      enterControllers =
+          List.generate(base.length, (_) => TextEditingController());
     });
   }
 
@@ -127,6 +126,8 @@ class _RatioScreenState extends State<RatioScreen> {
               ingredients.clear();
               base.clear();
               result.clear();
+              enterControllers.clear();
+
               saveData();
               Navigator.pop(context);
               setState(() {});
@@ -163,6 +164,7 @@ class _RatioScreenState extends State<RatioScreen> {
     );
   }
 
+  // ⭐ DELETE INGREDIENT
   void removeVariable(int i) {
     showDialog(
       context: context,
@@ -180,6 +182,7 @@ class _RatioScreenState extends State<RatioScreen> {
                 base.removeAt(i);
                 result.removeAt(i);
                 ingredients.removeAt(i);
+                enterControllers.removeAt(i); // ⭐ remove controller
               });
               saveCurrentDish();
               Navigator.pop(context);
@@ -201,6 +204,13 @@ class _RatioScreenState extends State<RatioScreen> {
   void updateValue(int index, String val) {
     if (val.isEmpty) return;
     double newVal = double.tryParse(val) ?? 0;
+
+    // ⭐ CLEAR OTHER ENTER FIELDS
+    for (int i = 0; i < enterControllers.length; i++) {
+      if (i != index) {
+        enterControllers[i].clear();
+      }
+    }
 
     setState(() {
       result = scaleRatio(base, index, newVal);
@@ -229,6 +239,7 @@ class _RatioScreenState extends State<RatioScreen> {
       base.add(1);
       result.add(1);
       ingredients.add("Ingredient ${ingredients.length + 1}");
+      enterControllers.add(TextEditingController()); // ⭐ add controller
     });
 
     saveCurrentDish();
@@ -245,7 +256,6 @@ class _RatioScreenState extends State<RatioScreen> {
       child: Column(
         children: [
 
-          // ===== DISH SELECT =====
           Row(
             children: [
               Expanded(
@@ -275,7 +285,8 @@ class _RatioScreenState extends State<RatioScreen> {
             Expanded(
               child: GridView.builder(
                 itemCount: base.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
@@ -314,8 +325,14 @@ class _RatioScreenState extends State<RatioScreen> {
                                     },
                                   ),
                                   const SizedBox(height: 4),
+
+                                  // ⭐ ENTER FIELD WITH CONTROLLER
                                   TextField(
-                                    decoration: const InputDecoration(labelText: "Enter", isDense: true),
+                                    controller: enterControllers[i],
+                                    decoration: const InputDecoration(
+                                      labelText: "Enter",
+                                      isDense: true,
+                                    ),
                                     onChanged: (v) => updateValue(i, v),
                                   ),
                                   const SizedBox(height: 6),
