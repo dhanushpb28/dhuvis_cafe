@@ -18,6 +18,10 @@ class _RatioScreenState extends State<RatioScreen> {
   List<double> base = [];
   List<double> result = [];
 
+  // ⭐ NEW — PRODUCTION OUTPUT
+  double baseOutput = 1;     // how many items base recipe makes
+  double targetOutput = 1;   // how many items we want
+
   // ================= INIT =================
 
   @override
@@ -50,6 +54,7 @@ class _RatioScreenState extends State<RatioScreen> {
     dishes[selectedDish!] = {
       "ingredients": ingredients,
       "base": base,
+      "baseOutput": baseOutput, // ⭐ save output
     };
 
     saveData();
@@ -64,6 +69,8 @@ class _RatioScreenState extends State<RatioScreen> {
       selectedDish = name;
       ingredients = List<String>.from(dish["ingredients"]);
       base = List<double>.from(dish["base"]);
+      baseOutput = (dish["baseOutput"] ?? 1).toDouble();
+      targetOutput = baseOutput;
       result = List.from(base);
     });
   }
@@ -85,6 +92,7 @@ class _RatioScreenState extends State<RatioScreen> {
               dishes[name] = {
                 "ingredients": ["Ingredient 1", "Ingredient 2", "Ingredient 3"],
                 "base": [1.0, 2.0, 3.0],
+                "baseOutput": 1,
               };
 
               saveData();
@@ -115,12 +123,10 @@ class _RatioScreenState extends State<RatioScreen> {
           TextButton(
             onPressed: () {
               dishes.remove(selectedDish);
-
               selectedDish = null;
               ingredients.clear();
               base.clear();
               result.clear();
-
               saveData();
               Navigator.pop(context);
               setState(() {});
@@ -146,9 +152,7 @@ class _RatioScreenState extends State<RatioScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              setState(() {
-                ingredients[index] = controller.text;
-              });
+              setState(() => ingredients[index] = controller.text);
               saveCurrentDish();
               Navigator.pop(context);
             },
@@ -159,7 +163,6 @@ class _RatioScreenState extends State<RatioScreen> {
     );
   }
 
-  // ⭐ DELETE INGREDIENT WITH CONFIRMATION
   void removeVariable(int i) {
     showDialog(
       context: context,
@@ -178,7 +181,6 @@ class _RatioScreenState extends State<RatioScreen> {
                 result.removeAt(i);
                 ingredients.removeAt(i);
               });
-
               saveCurrentDish();
               Navigator.pop(context);
             },
@@ -198,11 +200,23 @@ class _RatioScreenState extends State<RatioScreen> {
 
   void updateValue(int index, String val) {
     if (val.isEmpty) return;
-
     double newVal = double.tryParse(val) ?? 0;
 
     setState(() {
       result = scaleRatio(base, index, newVal);
+    });
+  }
+
+  // ⭐ SCALE BY OUTPUT
+  void updateOutput(String val) {
+    if (val.isEmpty) return;
+
+    targetOutput = double.tryParse(val) ?? baseOutput;
+
+    double factor = targetOutput / baseOutput;
+
+    setState(() {
+      result = base.map((e) => e * factor).toList();
     });
   }
 
@@ -248,17 +262,8 @@ class _RatioScreenState extends State<RatioScreen> {
                   onChanged: (v) => loadDish(v!),
                 ),
               ),
-
-              IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: addDishDialog,
-              ),
-
-              // ⭐ DELETE DISH BUTTON
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: deleteDish,
-              ),
+              IconButton(icon: const Icon(Icons.add), onPressed: addDishDialog),
+              IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: deleteDish),
             ],
           ),
 
@@ -270,25 +275,19 @@ class _RatioScreenState extends State<RatioScreen> {
             Expanded(
               child: GridView.builder(
                 itemCount: base.length,
-
-                gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
                   childAspectRatio: 0.65,
                 ),
-
                 itemBuilder: (context, i) {
-
                   return Card(
                     elevation: 3,
                     child: Padding(
                       padding: const EdgeInsets.all(6),
-
                       child: Column(
                         children: [
-
                           GestureDetector(
                             onTap: () => editIngredient(i),
                             child: Container(
@@ -301,49 +300,28 @@ class _RatioScreenState extends State<RatioScreen> {
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 4),
-
                           Expanded(
                             child: SingleChildScrollView(
                               child: Column(
                                 children: [
-
                                   TextField(
-                                    controller: TextEditingController(
-                                        text: base[i].toString()),
-                                    decoration: const InputDecoration(
-                                      labelText: "Base",
-                                      isDense: true,
-                                    ),
+                                    controller: TextEditingController(text: base[i].toString()),
+                                    decoration: const InputDecoration(labelText: "Base", isDense: true),
                                     onChanged: (v) {
                                       base[i] = double.tryParse(v) ?? 1;
                                       saveCurrentDish();
                                     },
                                   ),
-
                                   const SizedBox(height: 4),
-
                                   TextField(
-                                    decoration: const InputDecoration(
-                                      labelText: "Enter",
-                                      isDense: true,
-                                    ),
+                                    decoration: const InputDecoration(labelText: "Enter", isDense: true),
                                     onChanged: (v) => updateValue(i, v),
                                   ),
-
                                   const SizedBox(height: 6),
-
-                                  Text(
-                                    result[i].toStringAsFixed(2),
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                  ),
-
-                                  IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    onPressed: () => removeVariable(i),
-                                  ),
+                                  Text(result[i].toStringAsFixed(2),
+                                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  IconButton(icon: const Icon(Icons.delete), onPressed: () => removeVariable(i)),
                                 ],
                               ),
                             ),
@@ -353,6 +331,51 @@ class _RatioScreenState extends State<RatioScreen> {
                     ),
                   );
                 },
+              ),
+            ),
+
+          // ⭐ PRODUCTION OUTPUT PANEL
+          if (selectedDish != null)
+            Card(
+              margin: const EdgeInsets.only(top: 10),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  children: [
+                    const Text("Production Output",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+
+                    const SizedBox(height: 8),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: TextEditingController(text: baseOutput.toString()),
+                            decoration: const InputDecoration(
+                                labelText: "Base Output",
+                                helperText: "Items from base recipe"),
+                            onChanged: (v) {
+                              baseOutput = double.tryParse(v) ?? 1;
+                              saveCurrentDish();
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(width: 10),
+
+                        Expanded(
+                          child: TextField(
+                            decoration: const InputDecoration(
+                                labelText: "Target Output",
+                                helperText: "Items needed"),
+                            onChanged: updateOutput,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
 
